@@ -1,48 +1,51 @@
-name: Update IP List  # 工作流名称：更新IP列表
+name: Update IP List
 
 on:
   schedule:
-    - cron: '*/15 * * * *'  # 定时任务：每15分钟运行一次（UTC时间）
-  workflow_dispatch:  # 允许在GitHub网页手动触发工作流
-  push:  # 当有代码推送到仓库时触发工作流
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+  push:
 
 jobs:
   update-ip-list:
-    runs-on: ubuntu-latest  # 使用最新版Ubuntu系统作为运行环境
-    
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # 关键权限配置
+
     steps:
-    # 第一步：检出仓库代码
-    - uses: actions/checkout@v3  # 官方action，用于拉取仓库代码到工作环境
-      
-    # 第二步：设置Python环境
-    - name: Set up Python
-      uses: actions/setup-python@v4  # 官方Python环境配置action
+    - uses: actions/checkout@v3
       with:
-        python-version: '3.9'  # 指定使用Python 3.9版本
-        
-    # 第三步：安装Python依赖
+        fetch-depth: 0  # 获取完整提交历史
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip  # 升级pip包管理工具
-        pip install requests  # 安装HTTP请求库
-        pip install beautifulsoup4  # 安装HTML解析库
-        
-    # 第四步：运行Python脚本
+        python -m pip install --upgrade pip
+        pip install requests beautifulsoup4
+
     - name: Run script
-      run: python ${{ github.workspace }}/collect_ips.py  # 执行收集IP的Python脚本
-        
-    # 第五步：提交并推送变更
+      run: python ${{ github.workspace }}/collect_ips.py
+
     - name: Commit and push changes
       run: |
-        # 配置Git用户信息（需与仓库认证信息匹配）
         git config --global user.email "tianshideyou@proton.me"
         git config --global user.name "tianshipapa"
-        
-        # 检查是否有文件变更
+        # 自动处理换行符问题（Windows/Linux兼容）
+        git config --global core.autocrlf false
+        # 更新远程地址
+        git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/camel52zhang/yxip.git
+        # 强制拉取最新代码避免冲突
+        git pull --rebase 
+        # 提交变更
         if [ -n "$(git status --porcelain)" ]; then
-          git add ip.txt  # 只添加ip.txt文件
-          git commit -m "Automatic update"  # 自动提交信息
-          git push  # 推送变更到仓库
+          git add ip.txt
+          git commit -m "Automatic update: $(date +'%Y-%m-%d %H:%M:%S')"
+          git push origin HEAD:main
+          echo "✅ Changes pushed successfully"
         else
-          echo "No changes detected, skipping commit."  # 无变更时跳过提交
+          echo "🔄 No changes detected"
         fi
