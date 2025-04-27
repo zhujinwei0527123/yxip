@@ -10,12 +10,22 @@ jobs:
   update-ip-list:
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # 关键权限配置
+      contents: write  # 写入权限必须保留
 
     steps:
+    # 关键修改点1：带token检出
     - uses: actions/checkout@v3
       with:
+        token: ${{ secrets.GITHUB_TOKEN }}  # 注入认证信息
         fetch-depth: 0  # 获取完整提交历史
+
+    # 关键修改点2：先同步最新代码
+    - name: Pre-sync repository
+      run: |
+        git config --global user.email "tianshideyou@proton.me"
+        git config --global user.name "tianshipapa"
+        git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/camel52zhang/yxip.git
+        git pull origin main  # 普通拉取最新代码
 
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -24,28 +34,26 @@ jobs:
 
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
         pip install requests beautifulsoup4
 
     - name: Run script
       run: python ${{ github.workspace }}/collect_ips.py
 
+    # 关键修改点3：智能提交逻辑
     - name: Commit and push changes
       run: |
-        git config --global user.email "tianshideyou@proton.me"
-        git config --global user.name "tianshipapa"
-        # 自动处理换行符问题（Windows/Linux兼容）
-        git config --global core.autocrlf false
-        # 更新远程地址
-        git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/camel52zhang/yxip.git
-        # 强制拉取最新代码避免冲突
-        git pull --rebase 
-        # 提交变更
-        if [ -n "$(git status --porcelain)" ]; then
+        # 检测文件变化
+        if [ -n "$(git status --porcelain -- ip.txt)" ]; then
           git add ip.txt
-          git commit -m "Automatic update: $(date +'%Y-%m-%d %H:%M:%S')"
+          git commit -m "Automatic update: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          
+          # 带重试的推送机制
+          for i in {1..3}; do
+            git pull --rebase origin main && break || sleep 5
+          done
+          
           git push origin HEAD:main
-          echo "✅ Changes pushed successfully"
+          echo "✅ 更新推送成功"
         else
-          echo "🔄 No changes detected"
+          echo "🔄 未检测到IP变化"
         fi
