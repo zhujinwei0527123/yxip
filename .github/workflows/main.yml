@@ -2,7 +2,7 @@ name: Update IP List
 
 on:
   schedule:
-    - cron: '*/45 * * * *'
+    - cron: '*/45 * * * *'  # 每45分钟更新一次
   workflow_dispatch:
   push:
 
