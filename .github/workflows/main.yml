@@ -22,9 +22,9 @@ jobs:
     # 关键修改点2：先同步最新代码
     - name: Pre-sync repository
       run: |
-        git config --global user.email "tianshideyou@proton.me"
-        git config --global user.name "tianshipapa"
-        git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/camel52zhang/yxip.git
+        git config --global user.email "zhujinwei0527@gmail.com"
+        git config --global user.name "zhujinwei0527123"
+        git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/zhujinwei0527123/yxip.git
         git pull origin main  # 普通拉取最新代码
 
     - name: Set up Python
